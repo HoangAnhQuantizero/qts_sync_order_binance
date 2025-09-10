@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     # testnet url
     BASE_URL_TESTNET: str = "https://testnet.binancefuture.com" 
+    WS_URL_TESTNET: str = "wss://fstream.binancefuture.com/ws"
 
     # mainnet url
     BASE_URL_MAINNET: str = "https://fapi.binancefuture.com"
