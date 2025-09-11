@@ -15,14 +15,14 @@ def new_order_handler(message: dict) -> KafkaResponse:
 
         order_new = None
 
-        if "_sl" in client_order_id or "_tp" in client_order_id:        
+        if "_sl" in client_order_id or "_tp" in client_order_id:  
             order_new = OrderSLTP(
                 order_id=str(data[EventOrderUpdate.ORDER_ID]),
                 order_type=data[EventOrderUpdate.ORDER_TYPE],
                 order_status="NEW",
                 external_id=client_order_id,
                 quantity=float(data[EventOrderUpdate.ORIGINAL_QUANTITY]),
-                price=float(data[EventOrderUpdate.STOP_PRICE]) if data[EventOrderUpdate.STOP_PRICE] else 0.0,
+                price=float(data[EventOrderUpdate.ORIGINAL_PRICE]) if data[EventOrderUpdate.ORIGINAL_PRICE] else 0.0,
                 order_trade_time=str(data[EventOrderUpdate.ORDER_TRADE_TIME]),
             )
         elif "_core" in client_order_id:
