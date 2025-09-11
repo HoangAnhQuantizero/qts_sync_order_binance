@@ -1,7 +1,7 @@
 from loguru import logger
 from app.constants import *
-from app.handlers.filled_message_handler import FilledMessageHandler
-from app.handlers.new_message_handler import NewMessageHandler
+from app.handlers.filled_order_handler import filled_order_handler
+from app.handlers.new_order_handler import new_order_handler
 
 class BaseHandler:
     def handle_message(self, message: dict):
@@ -11,11 +11,11 @@ class BaseHandler:
             order_status = order_details[EventOrderUpdate.ORDER_STATUS]
             
             if order_status == "NEW":
-                NewMessageHandler().handle_message(message)
+                new_order_handler(message)
             elif order_status == "CANCELED":
-                logger.info(f"Order canceled: {message}")
+                logger.info(f"❌ Order canceled: {order_details[EventOrderUpdate.CLIENT_ORDER_ID]}")
             elif order_status == "FILLED":
-                FilledMessageHandler().handle_message(message)
+                filled_order_handler(message)
             elif order_status == "REJECTED":
-                logger.info(f"Order rejected: {message}")
+                logger.info(f"🚫 Order rejected: {order_details[EventOrderUpdate.CLIENT_ORDER_ID]}")
             

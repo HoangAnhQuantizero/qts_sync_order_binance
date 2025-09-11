@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  qts_sync_order_binance:
+    build: .
+    container_name: qts_sync_order_binance
+    volumes:
+      - .:/app
+    working_dir: /app
+    # command: python -m app.main
+    command: sleep infinity
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=192.168.110.154:19092
+      - KAFKA_TOPIC_1=dev.events_order_sync_test
+    restart: unless-stopped

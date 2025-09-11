@@ -1,0 +1,8 @@
+kafka-python
+python-dotenv
+loguru
+asyncpg
+psycopg2-binary
+websocket-client
+pydantic-settings
+requests
