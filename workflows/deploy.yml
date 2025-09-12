@@ -1,0 +1,144 @@
+name: Build Service
+
+on:
+  push:
+    branches:
+      - "dev"
+      - "main"
+      - "staging"
+      - "test"
+      - "v*"
+    paths-ignore:
+      - '.github/workflows/kubernetes/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    env:
+      IMAGE_NAMEX: ghcr.io/${{ github.repository }}:${{ github.ref_name }}-${{ github.sha }}
+      SHA8: ${GITHUB_SHA::8}
+
+    steps:   
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.WORKFLOW_TOKEN }}
+          #token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Set up cache for Docker layers
+      - name: Cache Docker layers
+        id: cache-docker-layers
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/docker
+          key: ${{ runner.os }}-docker-${{ hashFiles('**/Dockerfile') }}
+          restore-keys: |
+            ${{ runner.os }}-docker-
+
+      # Log in to GitHub Docker Registry
+      - name: Log in to GitHub Docker Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          #password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.WORKFLOW_TOKEN }}
+
+      # Convert repository name to lowercase using shell
+      - name: Convert repository name to lowercase
+        id: repo_name
+        run: | 
+          REPO_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')
+          IMAGE_NAME="ghcr.io/${REPO_NAME}:${{ github.ref_name }}-${{ github.sha }}"
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+
+      # Build and push Docker image
+      - name: Build and push Docker image
+        run: |
+          docker build -t ${IMAGE_NAME} .
+          docker push ${IMAGE_NAME}
+      
+      # Checkout Helm repo (qts-infra-core)
+      - name: Checkout Helm repo (qts-infra-core)
+        uses: actions/checkout@v3
+        with:
+          repository: Quantizero-com/qts-infra-core.git
+          token: ${{ secrets.WORKFLOW_TOKEN }}
+          path: helm-repo-core
+          ref: main
+      
+      # Update values.yaml files in both Helm repos
+      - name: Update Helm values files
+        run: |
+
+          set -euo pipefail
+          NEW_TAG="${{ github.ref_name }}-${{ github.sha }}"
+          echo "🔹 New image tag: $NEW_TAG"
+
+          update_values() {
+            local dir="$1"
+            echo ""
+            echo "========== 📂 Processing repo: $dir =========="
+            cd "$dir"
+
+            # Git identity
+            git config user.email "actions@quantizero.com"
+            git config user.name "Quantizero CI"
+
+            echo "📄 Searching for *values.yaml files..."
+            FILES=$(find . -type f -name "*values.yaml" | sort)
+
+            if [ -z "$FILES" ]; then
+              echo "⚠️ No matching files found in $dir"
+              cd ..
+              return
+            fi
+
+            echo "🔍 Found files:"
+            echo "$FILES" | sed 's/^/   - /'
+
+            CHANGES_MADE=false
+            REPO_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')
+            REF_NAME=$(echo ${{ github.ref_name }} | tr '[:upper:]' '[:lower:]')
+            NEW_IMAGE_NAME="ghcr.io/${REPO_NAME}:${NEW_TAG}"
+
+            while IFS= read -r file; do
+                echo ""
+                echo "➡️ Checking file: $file"
+
+                PATTERN="image:\\s*ghcr\\.io/${REPO_NAME}:${REF_NAME}-.*"
+                echo "🔍 Pattern: $PATTERN"
+
+                MATCHES=$(grep -E "$PATTERN" "$file" || true)
+
+                if [ -n "$MATCHES" ]; then
+                    echo "✅ Will replace in $file"
+                    sed -i -E "s|$PATTERN|image: ${NEW_IMAGE_NAME}|" "$file"
+                    git add "$file"
+                    CHANGES_MADE=true
+                else
+                    echo "⏭ No match in $file"
+                fi
+            done <<< "$FILES"
+
+            if [ "$CHANGES_MADE" = true ]; then
+              echo "💾 Changes detected, committing..."
+              git commit -m "Update image tag to ${NEW_TAG}"
+              git push origin main
+            else
+              echo "ℹ️ No changes to commit in $dir"
+            fi
+
+            cd ..
+          }
+
+          update_values helm-repo-core

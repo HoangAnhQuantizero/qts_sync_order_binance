@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qts-worker-sync-order-binance
+  namespace: default
+  labels:
+    app: qts-worker-sync-order-binance
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: qts-worker-sync-order-binance
+  template:
+    metadata:
+      labels:
+        app: qts-worker-sync-order-binance
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: qts-worker-sync-order-binance
+          image: ghcr.io/quantizero-com/qts_worker_sync_order:dev-f9da99354dc7c757afd03a01b5d55757ec246e30
+          ports:
+            - containerPort: 8000
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: qts-worker-sync-order-binance-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: KAFKA_TOPIC_1
+              valueFrom:
+                configMapKeyRef:
+                  name: qts-worker-sync-order-binance-config
+                  key: KAFKA_TOPIC_1
+            - name: ACCOUNT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: qts-worker-sync-order-binance-config
+                  key: ACCOUNT_ID
+            - name: BASE_URL_ACCOUNT_EXCHANGE
+              valueFrom:
+                configMapKeyRef:
+                  name: qts-worker-sync-order-binance-config
+                  key: BASE_URL_ACCOUNT_EXCHANGE
+            - name: IS_TESTNET
+              valueFrom:
+                configMapKeyRef:
+                  name: qts-worker-sync-order-binance-config
+                  key: IS_TESTNET
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 40
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 2
