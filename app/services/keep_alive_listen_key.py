@@ -11,10 +11,23 @@ def keep_alive_listen_key(url: str, api_key: str, listen_key: str):
         "listenKey": listen_key
     }
 
-    while True: 
-        time.sleep(settings.MINUTES_KEEP_ALIVE_LISTEN_KEY * 60)
-        response = requests.put(url, headers=headers, params=params)
-        logger.info(f"Keep alive listen key: {response.json()}")
+    try:
+        while True: 
+            response = requests.put(url, headers=headers, params=params)
+            
+            if response.status_code != 200:
+                logger.error(f"Failed to keep alive listen key: {response.json()}")
+                continue
+            elif response.status_code == 200:
+                logger.success(f"Keep alive listen key: {response.json()}")
+            else:
+                logger.error(f"Failed to keep alive listen key: {response.json()}")
+                continue
+
+            time.sleep(settings.MINUTES_KEEP_ALIVE_LISTEN_KEY * 60)
+
+    except Exception as e:
+        logger.error(f"Failed to keep alive listen key: {e}")
 
 if __name__ == "__main__":
     print(keep_alive_listen_key(
