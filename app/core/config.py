@@ -18,4 +18,6 @@ class Settings(BaseSettings):
     KAFKA_BOOTSTRAP_SERVERS: str = "192.168.110.154:19092"
     KAFKA_TOPIC_1: str = os.getenv("KAFKA_TOPIC_1", "dev.events_order_sync")
 
+    MINUTES_KEEP_ALIVE_LISTEN_KEY: int = 30
+
 settings = Settings()

@@ -1,7 +1,9 @@
 from loguru import logger
+from app.services.keep_alive_listen_key import keep_alive_listen_key
 from app.websocket_client import WebSocketService
 from app.core.config import settings
 from app.services.create_listen_key import create_listen_key
+import threading
 
 if __name__ == "__main__":
     websocket_service = WebSocketService(settings.WS_URL_TESTNET)
@@ -20,4 +22,7 @@ if __name__ == "__main__":
         raise Exception(listen_key_data.get("message"))
 
     websocket_service.listen_key = listen_key
+
+    threading.Thread(target=keep_alive_listen_key, args=(settings.BASE_URL_TESTNET, settings.API_KEY, listen_key)).start()
+    
     websocket_service.start()
