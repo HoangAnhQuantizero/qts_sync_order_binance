@@ -1,4 +1,5 @@
 from loguru import logger
+from app.services.get_account_exchange_api_key import get_account_exchange_api_keys
 from app.services.keep_alive_listen_key import keep_alive_listen_key
 from app.websocket_client import WebSocketService
 from app.core.config import settings
@@ -6,7 +7,6 @@ from app.services.create_listen_key import create_listen_key
 import threading
 import signal
 import sys
-import time
 
 def signal_handler(signum, frame):
     """Xử lý signal Ctrl+C"""
@@ -23,10 +23,31 @@ if __name__ == "__main__":
 
     try:
         listen_key = None
+        url = None
+        API_KEY = None
+        SECRET_KEY = None
+
+        if settings.IS_TESTNET:
+            url = settings.BASE_URL_TESTNET
+            API_KEY = settings.API_KEY
+            SECRET_KEY = settings.SECRET_KEY
+        else:
+            account_exchange_data = get_account_exchange_api_keys(
+                url=settings.BASE_URL_ACCOUNT_EXCHANGE,
+                account_id=settings.ACCOUNT_ID
+            )   
+            if account_exchange_data.get("success"):
+                API_KEY = account_exchange_data.get("data").get("api_key")
+                SECRET_KEY = account_exchange_data.get("data").get("secret_key")
+            else:
+                raise Exception(account_exchange_data.get("message"))
+
+            url = settings.BASE_URL_MAINNET
+
         listen_key_data = create_listen_key(
-            settings.API_KEY, 
-            settings.SECRET_KEY, 
-            settings.BASE_URL_TESTNET
+            API_KEY, 
+            SECRET_KEY, 
+            url
         )
 
         if listen_key_data.get("success"):  
